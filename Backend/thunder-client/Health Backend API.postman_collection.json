@@ -1,0 +1,128 @@
+{
+  "info": {
+    "_postman_id": "83c996ae-0e0a-4773-9049-8f45f1c7e281",
+    "name": "Health Backend API",
+    "description": "Postman 2.1 collection importable into Thunder Client. Set baseUrl to the running backend. Register/login requests write/read only the configured test database. Upload requests write files to the project's uploads directory. Never run against production data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET API health",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/", "description": "Expected: 200 and plain text API Running..." }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "POST Register valid test user (writes to DB)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Thunder Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/auth/register",
+            "description": "Run only against a disposable/local test database. Expected first run: 201 with registration success message. Re-running the same email should return 409."
+          }
+        },
+        {
+          "name": "POST Register missing fields",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register", "description": "Expected: 400 JSON validation message." }
+        },
+        {
+          "name": "POST Register empty body",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register", "description": "Expected: 400 JSON validation message." }
+        },
+        {
+          "name": "POST Register invalid types and email",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": 42,\n  \"email\": \"not-an-email\",\n  \"password\": 123\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register", "description": "Expected: 400 JSON validation message." }
+        },
+        {
+          "name": "POST Register duplicate test user",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Thunder Test User\",\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register", "description": "Run after valid registration. Expected: 409 User already exists." }
+        },
+        {
+          "name": "POST Login valid test user",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/login", "description": "Expected: 200 with a token. Copy token into authToken in the Thunder Client environment before running protected requests. testPassword is a fake sample value, not a real credential." }
+        },
+        {
+          "name": "POST Login wrong credentials",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"wrong-test-password\"\n}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/login", "description": "Expected: 400 Invalid credentials." }
+        },
+        {
+          "name": "POST Login empty body",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/login", "description": "Expected: 400 JSON validation message." }
+        },
+        {
+          "name": "POST Register malformed JSON",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{ malformed", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/auth/register", "description": "Expected: 400 parser error. Check response does not expose a stack trace." }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations (protected)",
+      "item": [
+        {
+          "name": "GET all foods (valid token)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }], "url": "{{baseUrl}}/api/recommendations", "description": "Expected: 200 JSON array; may be empty if no food records are seeded." }
+        },
+        {
+          "name": "GET all foods (missing token)",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/recommendations", "description": "Expected: 401 Authentication required." }
+        },
+        {
+          "name": "GET all foods (invalid token)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer not-a-valid-token" }], "url": "{{baseUrl}}/api/recommendations", "description": "Expected: 401 Invalid token." }
+        },
+        {
+          "name": "GET all foods (expired token)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{expiredToken}}" }], "url": "{{baseUrl}}/api/recommendations", "description": "Expected: 401. Supply a JWT signed with the configured secret whose exp is in the past; do not store a real token in a shared environment." }
+        },
+        {
+          "name": "GET high protein foods",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }], "url": "{{baseUrl}}/api/recommendations/high-protein", "description": "Expected: 200 JSON array filtered to protein >= 10." }
+        },
+        {
+          "name": "GET low calorie foods",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }], "url": "{{baseUrl}}/api/recommendations/low-calorie", "description": "Expected: 200 JSON array filtered to calories <= 100." }
+        },
+        {
+          "name": "GET foods by category",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }], "url": "{{baseUrl}}/api/recommendations/category/{{category}}", "description": "Expected: 200 JSON array filtered by exact category." }
+        },
+        {
+          "name": "GET foods by unknown category",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }], "url": "{{baseUrl}}/api/recommendations/category/no-such-category", "description": "Expected: 200 empty JSON array." }
+        },
+        {
+          "name": "POST unsupported recommendation method",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{authToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{}", "options": { "raw": { "language": "json" } } }, "url": "{{baseUrl}}/api/recommendations", "description": "No POST route exists. Expected: 404 with a valid token." }
+        }
+      ]
+    },
+    {
+      "name": "Upload (public route)",
+      "item": [
+        {
+          "name": "POST upload without image",
+          "request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [] }, "url": "{{baseUrl}}/api/upload", "description": "Expected: 400 No file uploaded." }
+        },
+        {
+          "name": "POST upload valid image (select file)",
+          "request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "" }] }, "url": "{{baseUrl}}/api/upload", "description": "In Thunder Client select a local JPEG, PNG, GIF, or WebP file <= 5 MB for field image. Expected: 200 JSON metadata. Writes the file to uploads/." }
+        },
+        {
+          "name": "POST upload unsupported file type",
+          "request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "" }] }, "url": "{{baseUrl}}/api/upload", "description": "Select a text or other non-image file. Expected: 400 JSON error." }
+        },
+        {
+          "name": "POST upload oversized image",
+          "request": { "method": "POST", "header": [], "body": { "mode": "formdata", "formdata": [{ "key": "image", "type": "file", "src": "" }] }, "url": "{{baseUrl}}/api/upload", "description": "Select an image larger than 5 MB. Expected: 413 JSON error." }
+        }
+      ]
+    }
+  ]
+}
